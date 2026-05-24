@@ -79,6 +79,8 @@ function serializeMonitor(monitor: any) {
     retentionDays: monitor.retention_days,
     estimatedCreditsPerMonth: monitor.estimated_credits_per_month,
     lastCheckSummary: monitor.last_check_summary,
+    goal: monitor.goal ?? null,
+    judgeEnabled: Boolean(monitor.judge_enabled),
     createdAt: monitor.created_at,
     updatedAt: monitor.updated_at,
   };
@@ -389,19 +391,39 @@ export async function getMonitorCheckController(
   ]);
 
   const pagesWithDiffs = await Promise.all(
-    pages.map(async page => ({
-      id: page.id,
-      targetId: page.target_id,
-      url: page.url,
-      status: page.status,
-      previousScrapeId: page.previous_scrape_id,
-      currentScrapeId: page.current_scrape_id,
-      statusCode: page.status_code,
-      error: page.error,
-      metadata: page.metadata,
-      diff: await getMonitorDiffArtifact(page.diff_gcs_key),
-      createdAt: page.created_at,
-    })),
+    pages.map(async page => {
+      const artifact = await getMonitorDiffArtifact(page.diff_gcs_key);
+      const base = {
+        id: page.id,
+        targetId: page.target_id,
+        url: page.url,
+        status: page.status,
+        previousScrapeId: page.previous_scrape_id,
+        currentScrapeId: page.current_scrape_id,
+        statusCode: page.status_code,
+        error: page.error,
+        metadata: page.metadata,
+        judgment: page.judgment ?? null,
+        createdAt: page.created_at,
+      };
+      if (!artifact) {
+        return { ...base, diff: null };
+      }
+      if (artifact.kind === "json") {
+        return {
+          ...base,
+          diff: {
+            json: artifact.json,
+            ...(artifact.markdown ? { text: artifact.markdown.text } : {}),
+          },
+          snapshot: { json: artifact.snapshot },
+        };
+      }
+      return {
+        ...base,
+        diff: { text: artifact.text, json: artifact.json },
+      };
+    }),
   );
   const nextSkip = skip + pagesWithDiffs.length;
   const next = (() => {
