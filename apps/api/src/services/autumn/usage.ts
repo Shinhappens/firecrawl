@@ -3,9 +3,9 @@ import { eq, inArray } from "drizzle-orm";
 import { dbRr } from "../../db/connection";
 import * as schema from "../../db/schema";
 import { autumnClient } from "./client";
+import { CREDITS_FEATURE_ID } from "./autumn.service";
 
-const CREDITS_FEATURE_ID = "CREDITS";
-const TOKENS_PER_CREDIT = 15;
+export const TOKENS_PER_CREDIT = 15;
 const HISTORICAL_RANGE = "90d";
 const HISTORICAL_BIN_SIZE = "day";
 
@@ -15,7 +15,6 @@ const HISTORICAL_BIN_SIZE = "day";
 
 interface TeamBalance {
   remaining: number;
-  granted: number;
   planCredits: number;
   usage: number;
   unlimited: boolean;
@@ -319,7 +318,6 @@ export async function getTeamBalance(
 
   return {
     remaining: signedRemaining(creditBalance),
-    granted: creditBalance?.granted ?? 0,
     planCredits,
     usage: creditBalance?.usage ?? 0,
     unlimited: creditBalance?.unlimited ?? false,
